@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  llm-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llm-gpu-server:latest
+    container_name: llm-dynamic-gpu
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=8001
+      - SERVER_HOST=0.0.0.0  # Escutar em todas as interfaces
+      - GPU_LAYERS=32
+      - DEFAULT_MODEL=llama2-7b
+    ports:
+      - "0.0.0.0:8001:8001"  # Bind externo
+    volumes:
+      - ./models:/app/models
+      - ./config:/app/config
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    shm_size: 2gb
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    image: llm-gateway:latest
+    container_name: llm-gateway
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:8000:8000"  # Gateway externo
+    environment:
+      - LLM_SERVER_URL=http://llm-server:8001
+      - MAX_TOKENS_LIMIT=1024
+      - ENABLE_MODEL_SWITCHING=true
+    depends_on:
+      - llm-server

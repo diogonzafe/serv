@@ -1,0 +1,22 @@
+{
+  "models": {
+    "llama-test": {
+      "name": "Llama 3.2 3B Instruct (Test)",
+      "path": "/app/models/llama/llama-3.2-3b-instruct-q4_k_m.gguf",
+      "context_size": 4096,
+      "estimated_vram_gb": 2.5
+    },
+    "llama": {
+      "name": "Llama 3.1 8B Instruct",
+      "path": "/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf",
+      "context_size": 4096,
+      "estimated_vram_gb": 5.5
+    },
+    "mistral": {
+      "name": "Mistral 7B Instruct", 
+      "path": "/app/models/mistral/mistral-7b-instruct-q4_k_m.gguf",
+      "context_size": 4096,
+      "estimated_vram_gb": 4.5
+    }
+  }
+}
