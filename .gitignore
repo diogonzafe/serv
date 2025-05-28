@@ -1,5 +1,3 @@
 
 # Ignorar scripts que contêm credenciais
-scripts/download_llama_models.sh
-scripts/download_models.sh
-scripts/download_working_models.sh
+*.gguf
