@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # APENAS OS MODELOS QUE FUNCIONAM
+  # LLAMA 8B - GPU CORRIGIDA
   llama-8b-balanced:
     build:
       context: .
@@ -9,17 +9,20 @@ services:
     image: llm-multi-base:latest
     container_name: llama-8b-balanced
     restart: unless-stopped
+    runtime: nvidia
     environment:
       - MODEL_NAME=Llama 3.1 8B Balanced
       - MODEL_PATH=/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf
       - SERVER_PORT=8000
-      - GPU_LAYERS=30
-      - CONTEXT_SIZE=4096
+      - GPU_LAYERS=25
+      - CONTEXT_SIZE=2048
       - MODEL_SPECIALTIES=general,complex-tasks
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+    networks:
+      - llm-network
     deploy:
       resources:
         reservations:
@@ -27,9 +30,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    networks:
-      - llm-network
 
+  # CODELLAMA 7B - GPU CORRIGIDA  
   codellama-7b:
     build:
       context: .
@@ -37,17 +39,20 @@ services:
     image: llm-multi-base:latest
     container_name: codellama-7b
     restart: unless-stopped
+    runtime: nvidia
     environment:
       - MODEL_NAME=CodeLlama 7B Specialist
       - MODEL_PATH=/app/models/llama/codellama-7b-instruct-q4_k_m.gguf
       - SERVER_PORT=8000
-      - GPU_LAYERS=30
-      - CONTEXT_SIZE=4096
+      - GPU_LAYERS=25
+      - CONTEXT_SIZE=2048
       - MODEL_SPECIALTIES=code,programming
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+    networks:
+      - llm-network
     deploy:
       resources:
         reservations:
@@ -55,9 +60,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    networks:
-      - llm-network
 
+  # MISTRAL 7B - GPU CORRIGIDA
   mistral-7b-code:
     build:
       context: .
@@ -65,17 +69,20 @@ services:
     image: llm-multi-base:latest
     container_name: mistral-7b-code
     restart: unless-stopped
+    runtime: nvidia
     environment:
       - MODEL_NAME=Mistral 7B Code
       - MODEL_PATH=/app/models/mistral/mistral-7b-instruct-q4_k_m.gguf
       - SERVER_PORT=8000
-      - GPU_LAYERS=30
-      - CONTEXT_SIZE=8192
+      - GPU_LAYERS=25
+      - CONTEXT_SIZE=4096
       - MODEL_SPECIALTIES=code,technical
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+    networks:
+      - llm-network
     deploy:
       resources:
         reservations:
@@ -83,9 +90,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    networks:
-      - llm-network
 
+  # SOLAR 10B - GPU CORRIGIDA
   solar-10b-premium:
     build:
       context: .
@@ -93,17 +99,20 @@ services:
     image: llm-multi-base:latest
     container_name: solar-10b-premium
     restart: unless-stopped
+    runtime: nvidia
     environment:
       - MODEL_NAME=Solar 10.7B Premium
       - MODEL_PATH=/app/models/solar/solar-10.7b-instruct-q4_k_m.gguf
       - SERVER_PORT=8000
-      - GPU_LAYERS=35
-      - CONTEXT_SIZE=4096
+      - GPU_LAYERS=30
+      - CONTEXT_SIZE=2048
       - MODEL_SPECIALTIES=complex-reasoning
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+    networks:
+      - llm-network
     deploy:
       resources:
         reservations:
@@ -111,10 +120,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    networks:
-      - llm-network
 
-  # GATEWAY FUNCIONAL
+  # GATEWAY
   smart-gateway-v2:
     build:
       context: ./gateway-v2

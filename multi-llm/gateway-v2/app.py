@@ -1,155 +1,143 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import Optional, List
 import httpx
 import asyncio
 import time
-import random
-import json
 
-app = FastAPI(title="Multi-LLM Smart Gateway v2 - Working Models")
+app = FastAPI(title="Multi-LLM Gateway - Working")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Configuração APENAS com modelos que funcionam
-MODELS_CONFIG = {
-    "llama-2-7b-fast": {"url": "http://llama-2-7b-fast:8000", "tier": "fast", "specialties": ["general", "chat"]},
-    "llama-8b-balanced": {"url": "http://llama-8b-balanced:8000", "tier": "balanced", "specialties": ["general", "complex-tasks"]},
-    "codellama-7b": {"url": "http://codellama-7b:8000", "tier": "specialist", "specialties": ["code", "debugging"]},
-    "mistral-7b-code": {"url": "http://mistral-7b-code:8000", "tier": "balanced", "specialties": ["code", "programming"]},
-    "solar-10b-premium": {"url": "http://solar-10b-premium:8000", "tier": "premium", "specialties": ["complex-reasoning"]}
+# MODELOS CONFIRMADOS FUNCIONANDO
+MODELS = {
+    "llama-8b-balanced": {
+        "url": "http://llama-8b-balanced:8000",
+        "tier": "balanced",
+        "specialties": ["general", "complex-tasks"]
+    },
+    "codellama-7b": {
+        "url": "http://codellama-7b:8000", 
+        "tier": "specialist",
+        "specialties": ["code", "programming"]
+    },
+    "mistral-7b-code": {
+        "url": "http://mistral-7b-code:8000",
+        "tier": "balanced", 
+        "specialties": ["code", "technical"]
+    },
+    "solar-10b-premium": {
+        "url": "http://solar-10b-premium:8000",
+        "tier": "premium",
+        "specialties": ["complex-reasoning"]
+    }
 }
 
 class GenerateRequest(BaseModel):
     prompt: str
-    max_tokens: Optional[int] = 512
+    max_tokens: Optional[int] = 200
     temperature: Optional[float] = 0.7
-    model_preference: Optional[str] = None  # fast, balanced, premium, specialist
-    task_type: Optional[str] = None  # code, reasoning, general, chat
+    model_preference: Optional[str] = None
+    task_type: Optional[str] = None
 
-def analyze_prompt_for_model_selection(prompt: str, task_type: Optional[str] = None) -> str:
-    """Analisa o prompt para selecionar o melhor modelo (apenas modelos funcionais)."""
+def select_model(prompt: str, task_type: str = None, preference: str = None) -> str:
+    """Seleção simples e direta de modelo"""
     prompt_lower = prompt.lower()
     
-    # Se tipo de tarefa especificado, usar isso
-    if task_type:
-        if task_type in ["code", "programming", "debug"]:
-            return "codellama-7b"  # Especialista em código
-        elif task_type in ["reasoning", "analysis", "complex"]:
-            return "solar-10b-premium"  # Premium para raciocínio complexo
-        elif task_type in ["quick", "simple", "fast"]:
-            return "llama-2-7b-fast"  # Rápido
-
-    # Análise por palavras-chave
-    if any(kw in prompt_lower for kw in ["código", "code", "python", "javascript", "programa", "debug", "error"]):
+    # Por preferência explícita
+    if preference == "premium":
+        return "solar-10b-premium"
+    elif preference == "specialist":
         return "codellama-7b"
+    elif preference == "balanced":
+        return "llama-8b-balanced"
     
-    if any(kw in prompt_lower for kw in ["complexo", "detalhado", "aprofundado", "análise completa"]):
+    # Por tipo de tarefa
+    if task_type == "code" or any(word in prompt_lower for word in ["código", "code", "python", "função", "programa"]):
+        return "codellama-7b"
+    elif task_type == "reasoning" or any(word in prompt_lower for word in ["analise", "análise", "complexo", "estratégia"]):
         return "solar-10b-premium"
     
-    if len(prompt.split()) < 10:
-        return "llama-2-7b-fast"
-    
-    # Default balanceado
+    # Default: modelo balanceado
     return "llama-8b-balanced"
 
-async def check_model_health(model_id: str, url: str) -> bool:
-    """Verifica se um modelo está saudável."""
+async def check_model(model_id: str, url: str) -> bool:
+    """Verifica se modelo está funcionando"""
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
+        async with httpx.AsyncClient(timeout=3.0) as client:
             response = await client.get(f"{url}/health")
             return response.status_code == 200
     except:
         return False
 
-async def get_available_models() -> List[str]:
-    """Retorna lista de modelos disponíveis."""
-    available = []
-    
-    tasks = []
-    for model_id, config in MODELS_CONFIG.items():
-        tasks.append(check_model_health(model_id, config["url"]))
-    
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    for i, (model_id, config) in enumerate(MODELS_CONFIG.items()):
-        if results[i] is True:
-            available.append(model_id)
-    
-    return available
-
 @app.get("/")
-def read_root():
+def root():
     return {
-        "service": "Multi-LLM Smart Gateway v2 - Working Models",
-        "version": "2.0-stable",
-        "models_configured": len(MODELS_CONFIG),
-        "features": ["intelligent_model_selection", "verified_models_only"]
+        "service": "Multi-LLM Gateway - Working",
+        "version": "2.1",
+        "models": len(MODELS),
+        "status": "operational"
     }
 
 @app.get("/health")
-async def health_check():
-    available_models = await get_available_models()
+async def health():
+    """Health check do gateway"""
+    available = []
+    
+    # Verificar cada modelo
+    for model_id, config in MODELS.items():
+        if await check_model(model_id, config["url"]):
+            available.append(model_id)
     
     return {
-        "status": "healthy" if available_models else "degraded",
-        "available_models": len(available_models),
-        "total_models": len(MODELS_CONFIG),
-        "models": available_models
+        "status": "healthy" if len(available) >= 2 else "degraded",
+        "available_models": len(available),
+        "total_models": len(MODELS),
+        "models": available,
+        "timestamp": time.time()
     }
 
 @app.get("/models")
-async def list_models():
-    available_models = await get_available_models()
-    
+async def models():
+    """Lista todos os modelos"""
     models_info = []
-    for model_id, config in MODELS_CONFIG.items():
-        model_info = {
+    
+    for model_id, config in MODELS.items():
+        available = await check_model(model_id, config["url"])
+        models_info.append({
             "id": model_id,
             "tier": config["tier"],
             "specialties": config["specialties"],
-            "available": model_id in available_models,
+            "available": available,
             "url": config["url"]
-        }
-        models_info.append(model_info)
+        })
     
     return {"models": models_info}
 
 @app.post("/generate")
-async def smart_generate(request: GenerateRequest):
-    # Selecionar modelo baseado no prompt e preferências
-    if request.model_preference:
-        # Filtrar por tier preferido
-        candidates = [m for m, c in MODELS_CONFIG.items() if c["tier"] == request.model_preference]
-        if candidates:
-            selected_model = candidates[0]
-        else:
-            selected_model = analyze_prompt_for_model_selection(request.prompt, request.task_type)
-    else:
-        selected_model = analyze_prompt_for_model_selection(request.prompt, request.task_type)
+async def generate(request: GenerateRequest):
+    """Geração de texto usando modelo selecionado"""
+    
+    # Selecionar modelo
+    selected_model = select_model(request.prompt, request.task_type, request.model_preference)
+    model_url = MODELS[selected_model]["url"]
     
     # Verificar se modelo está disponível
-    available_models = await get_available_models()
-    
-    if selected_model not in available_models:
-        # Fallback para qualquer modelo disponível
-        if available_models:
-            selected_model = available_models[0]
+    if not await check_model(selected_model, model_url):
+        # Fallback: tentar qualquer modelo disponível
+        for model_id, config in MODELS.items():
+            if await check_model(model_id, config["url"]):
+                selected_model = model_id
+                model_url = config["url"]
+                break
         else:
             raise HTTPException(status_code=503, detail="Nenhum modelo disponível")
     
-    # Fazer requisição para o modelo selecionado
-    model_url = MODELS_CONFIG[selected_model]["url"]
-    
+    # Fazer requisição para o modelo
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        start_time = time.time()
+        
+        async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
                 f"{model_url}/generate",
                 json={
@@ -158,22 +146,32 @@ async def smart_generate(request: GenerateRequest):
                     "temperature": request.temperature
                 }
             )
+        
+        total_time = time.time() - start_time
+        
+        if response.status_code == 200:
+            result = response.json()
             
-            if response.status_code == 200:
-                result = response.json()
-                # Adicionar informações do gateway
-                result["gateway_info"] = {
-                    "selected_model": selected_model,
-                    "model_tier": MODELS_CONFIG[selected_model]["tier"],
-                    "selection_reason": "smart_routing_verified"
-                }
-                return result
-            else:
-                raise HTTPException(status_code=response.status_code, detail=response.text)
-                
+            # Adicionar informações do gateway
+            result["gateway_info"] = {
+                "selected_model": selected_model,
+                "model_tier": MODELS[selected_model]["tier"],
+                "selection_reason": "intelligent_routing",
+                "total_time": f"{total_time:.2f}s"
+            }
+            
+            return result
+        else:
+            raise HTTPException(
+                status_code=response.status_code, 
+                detail=f"Erro do modelo: {response.text}"
+            )
+            
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Timeout na geração")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro na geração: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8200)
+    uvicorn.run(app, host="0.0.0.0", port=8200, log_level="info")

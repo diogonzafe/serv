@@ -1,113 +1,94 @@
 import os
 import time
 import gc
-import json
 from typing import Optional, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-import psutil
 
 try:
     from llama_cpp import Llama
-    print("✅ llama-cpp-python importado com sucesso")
 except ImportError as e:
     print(f"❌ ERRO: {e}")
     exit(1)
 
-app = FastAPI(title="LLM Container Server")
+app = FastAPI(title="LLM UltraFast Server")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# Estado global
 model_instance: Optional[Llama] = None
 model_config: Dict[str, Any] = {}
 startup_time = time.time()
 
 class GenerateRequest(BaseModel):
     prompt: str
-    max_tokens: Optional[int] = 512
+    max_tokens: Optional[int] = 200
     temperature: Optional[float] = 0.7
     stream: Optional[bool] = False
-
-def get_system_info():
-    try:
-        process = psutil.Process()
-        return {
-            "memory_mb": f"{process.memory_info().rss / 1024 / 1024:.1f}",
-            "cpu_percent": f"{process.cpu_percent():.1f}%"
-        }
-    except:
-        return {"memory_mb": "0", "cpu_percent": "0%"}
-
-def get_gpu_memory():
-    try:
-        import subprocess
-        result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used,memory.total', '--format=csv,noheader,nounits'], 
-                              capture_output=True, text=True, timeout=5)
-        if result.returncode == 0:
-            used, total = map(int, result.stdout.strip().split(', '))
-            return {"used_mb": used, "free_mb": total - used, "total_mb": total}
-    except:
-        pass
-    return {"used_mb": 0, "free_mb": 12288, "total_mb": 12288}
 
 def load_model():
     global model_instance, model_config
     
-    # Carregar configuração
     model_path = os.environ.get("MODEL_PATH", "/app/models/default.gguf")
     model_name = os.environ.get("MODEL_NAME", "Default")
-    gpu_layers = int(os.environ.get("GPU_LAYERS", 25))
-    context_size = int(os.environ.get("CONTEXT_SIZE", 2048))
+    gpu_layers = int(os.environ.get("GPU_LAYERS", 50))
+    context_size = int(os.environ.get("CONTEXT_SIZE", 1024))
     
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Modelo não encontrado: {model_path}")
     
-    print(f"🔄 Carregando modelo: {model_name}")
+    print(f"🚀 Carregando modelo ULTRA RÁPIDO: {model_name}")
     print(f"📁 Caminho: {model_path}")
-    print(f"🎯 GPU Layers: {gpu_layers}")
-    print(f"📚 Context: {context_size}")
+    print(f"🎯 GPU Layers: {gpu_layers} (MÁXIMO)")
+    print(f"📚 Context: {context_size} (OTIMIZADO)")
     
     try:
         model_instance = Llama(
             model_path=model_path,
             n_ctx=context_size,
             n_gpu_layers=gpu_layers,
-            n_threads=6,
-            verbose=False,
+            n_threads=12,              # MAIS THREADS
+            verbose=False,             # SEM LOGS VERBOSOS
             seed=42,
             use_mlock=True,
             use_mmap=True,
             f16_kv=True,
-            n_batch=512,
+            n_batch=1024,              # BATCH MAIOR
+            rope_scaling_type=-1,      # OTIMIZAÇÃO ROPE
+            offload_kqv=True,         # OFFLOAD KQV PARA GPU
+            flash_attn=True,          # FLASH ATTENTION
         )
         
         model_config = {
             "name": model_name,
             "path": model_path,
             "context_size": context_size,
-            "gpu_layers": gpu_layers
+            "gpu_layers": gpu_layers,
+            "optimized": True
         }
         
-        print(f"✅ Modelo {model_name} carregado com sucesso!")
+        print(f"✅ Modelo {model_name} carregado ULTRA RÁPIDO!")
         return True
         
     except Exception as e:
         print(f"❌ Erro ao carregar modelo: {e}")
         return False
 
+@app.on_event("startup")
+async def startup_event():
+    success = load_model()
+    if not success:
+        print("❌ Falha ao carregar modelo na inicialização")
+
 @app.get("/")
 def read_root():
     uptime = time.time() - startup_time
     return {
-        "status": "running",
+        "status": "ultrafast",
         "model": model_config.get("name", "Unknown"),
         "model_loaded": model_instance is not None,
         "uptime_seconds": f"{uptime:.1f}",
-        "system": get_system_info(),
-        "gpu": get_gpu_memory(),
-        "specialties": os.environ.get("MODEL_SPECIALTIES", "general").split(",")
+        "optimizations": ["max_gpu_layers", "reduced_context", "flash_attention", "optimized_batch"]
     }
 
 @app.get("/health")
@@ -115,19 +96,7 @@ def health_check():
     return {
         "status": "healthy" if model_instance else "no_model",
         "model_loaded": model_instance is not None,
-        "gpu_memory": get_gpu_memory()
-    }
-
-@app.get("/info")
-def model_info():
-    return {
-        "config": model_config,
-        "capabilities": {
-            "generate": model_instance is not None,
-            "stream": model_instance is not None,
-            "context_size": model_config.get("context_size", 0)
-        },
-        "performance": get_system_info()
+        "performance": "ultrafast"
     }
 
 @app.post("/generate")
@@ -138,12 +107,18 @@ async def generate(request: GenerateRequest):
     try:
         start_time = time.time()
         
+        # CONFIGURAÇÕES OTIMIZADAS PARA VELOCIDADE
         response = model_instance.create_completion(
             request.prompt,
-            max_tokens=min(request.max_tokens, 1024),
+            max_tokens=min(request.max_tokens, 500),  # LIMITE MENOR
             temperature=request.temperature,
             echo=False,
-            stream=False
+            stream=False,
+            top_p=0.9,                # OTIMIZADO
+            top_k=40,                 # OTIMIZADO
+            repeat_penalty=1.1,       # OTIMIZADO
+            tfs_z=1.0,               # TAIL FREE SAMPLING
+            typical_p=1.0,           # TYPICAL SAMPLING
         )
         
         generation_time = time.time() - start_time
@@ -158,19 +133,12 @@ async def generate(request: GenerateRequest):
                 "completion_tokens": len(response["choices"][0]["text"].split()),
                 "total_tokens": len(request.prompt.split()) + len(response["choices"][0]["text"].split())
             },
-            "system": get_system_info()
+            "performance": "ultrafast"
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro na geração: {str(e)}")
 
-# Carregar modelo na inicialização
-print("🚀 Iniciando carregamento do modelo...")
-if load_model():
-    print("✅ Modelo carregado com sucesso!")
-else:
-    print("❌ Falha ao carregar modelo")
-
 if __name__ == "__main__":
     port = int(os.environ.get("SERVER_PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port, workers=1)
+    uvicorn.run("llm_server_ultrafast:app", host="0.0.0.0", port=port, workers=1)

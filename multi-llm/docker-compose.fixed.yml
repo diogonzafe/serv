@@ -1,7 +1,9 @@
 version: '3.8'
 
 services:
-  # APENAS OS MODELOS QUE FUNCIONAM
+  # ===== MODELOS QUE FUNCIONAM =====
+  
+  # Balanced Tier - Llama 8B (FUNCIONA)
   llama-8b-balanced:
     build:
       context: .
@@ -15,11 +17,12 @@ services:
       - SERVER_PORT=8000
       - GPU_LAYERS=30
       - CONTEXT_SIZE=4096
-      - MODEL_SPECIALTIES=general,complex-tasks
+      - MODEL_SPECIALTIES=general,complex-tasks,multilingual
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+      - ./config:/app/config:ro
     deploy:
       resources:
         reservations:
@@ -29,7 +32,13 @@ services:
               capabilities: [gpu]
     networks:
       - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # Specialist Tier - CodeLlama (FUNCIONA)
   codellama-7b:
     build:
       context: .
@@ -43,11 +52,12 @@ services:
       - SERVER_PORT=8000
       - GPU_LAYERS=30
       - CONTEXT_SIZE=4096
-      - MODEL_SPECIALTIES=code,programming
+      - MODEL_SPECIALTIES=code,programming,debugging,development
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+      - ./config:/app/config:ro
     deploy:
       resources:
         reservations:
@@ -57,7 +67,13 @@ services:
               capabilities: [gpu]
     networks:
       - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # Balanced Tier - Mistral (FUNCIONA)
   mistral-7b-code:
     build:
       context: .
@@ -71,11 +87,12 @@ services:
       - SERVER_PORT=8000
       - GPU_LAYERS=30
       - CONTEXT_SIZE=8192
-      - MODEL_SPECIALTIES=code,technical
+      - MODEL_SPECIALTIES=code,programming,technical
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+      - ./config:/app/config:ro
     deploy:
       resources:
         reservations:
@@ -85,7 +102,13 @@ services:
               capabilities: [gpu]
     networks:
       - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
+  # Premium Tier - Solar (FUNCIONA)
   solar-10b-premium:
     build:
       context: .
@@ -99,11 +122,12 @@ services:
       - SERVER_PORT=8000
       - GPU_LAYERS=35
       - CONTEXT_SIZE=4096
-      - MODEL_SPECIALTIES=complex-reasoning
+      - MODEL_SPECIALTIES=complex-reasoning,high-quality,detailed-analysis
       - NVIDIA_VISIBLE_DEVICES=0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
       - ./models:/app/models:ro
+      - ./config:/app/config:ro
     deploy:
       resources:
         reservations:
@@ -113,8 +137,13 @@ services:
               capabilities: [gpu]
     networks:
       - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # GATEWAY FUNCIONAL
+  # ===== GATEWAY CORRIGIDO =====
   smart-gateway-v2:
     build:
       context: ./gateway-v2
@@ -125,7 +154,7 @@ services:
     ports:
       - "8200:8200"
     environment:
-      - GATEWAY_VERSION=2.1
+      - GATEWAY_VERSION=2.0
       - LOG_LEVEL=INFO
     networks:
       - llm-network
@@ -134,8 +163,13 @@ services:
       - codellama-7b
       - mistral-7b-code
       - solar-10b-premium
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # MONITORING
+  # ===== MONITORING =====
   monitoring:
     image: nginx:alpine
     container_name: llm-monitoring

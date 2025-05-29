@@ -11,12 +11,11 @@ import psutil
 
 try:
     from llama_cpp import Llama
-    print("✅ llama-cpp-python importado com sucesso")
 except ImportError as e:
     print(f"❌ ERRO: {e}")
     exit(1)
 
-app = FastAPI(title="LLM Container Server")
+app = FastAPI(title="LLM Working Server")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # Estado global
@@ -55,39 +54,41 @@ def get_gpu_memory():
 def load_model():
     global model_instance, model_config
     
-    # Carregar configuração
+    # Carregar configuração IGUAL AO QUE FUNCIONAVA
     model_path = os.environ.get("MODEL_PATH", "/app/models/default.gguf")
     model_name = os.environ.get("MODEL_NAME", "Default")
-    gpu_layers = int(os.environ.get("GPU_LAYERS", 25))
-    context_size = int(os.environ.get("CONTEXT_SIZE", 2048))
+    gpu_layers = int(os.environ.get("GPU_LAYERS", 32))      # Pequeno ajuste: 30->32
+    context_size = int(os.environ.get("CONTEXT_SIZE", 4096))
     
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"Modelo não encontrado: {model_path}")
     
-    print(f"🔄 Carregando modelo: {model_name}")
+    print(f"🔄 Carregando modelo (configuração que funcionava): {model_name}")
     print(f"📁 Caminho: {model_path}")
-    print(f"🎯 GPU Layers: {gpu_layers}")
+    print(f"🎯 GPU Layers: {gpu_layers} (pequeno ajuste)")
     print(f"📚 Context: {context_size}")
     
     try:
+        # MESMAS CONFIGURAÇÕES QUE FUNCIONAVAM + pequenos ajustes
         model_instance = Llama(
             model_path=model_path,
             n_ctx=context_size,
             n_gpu_layers=gpu_layers,
-            n_threads=6,
+            n_threads=8,                    # IGUAL AO ORIGINAL
             verbose=False,
             seed=42,
             use_mlock=True,
             use_mmap=True,
             f16_kv=True,
-            n_batch=512,
+            n_batch=512,                    # IGUAL AO ORIGINAL
         )
         
         model_config = {
             "name": model_name,
             "path": model_path,
             "context_size": context_size,
-            "gpu_layers": gpu_layers
+            "gpu_layers": gpu_layers,
+            "version": "working_with_speed_tweaks"
         }
         
         print(f"✅ Modelo {model_name} carregado com sucesso!")
@@ -96,6 +97,12 @@ def load_model():
     except Exception as e:
         print(f"❌ Erro ao carregar modelo: {e}")
         return False
+
+@app.on_event("startup")
+async def startup_event():
+    success = load_model()
+    if not success:
+        print("❌ Falha ao carregar modelo na inicialização")
 
 @app.get("/")
 def read_root():
@@ -107,7 +114,7 @@ def read_root():
         "uptime_seconds": f"{uptime:.1f}",
         "system": get_system_info(),
         "gpu": get_gpu_memory(),
-        "specialties": os.environ.get("MODEL_SPECIALTIES", "general").split(",")
+        "version": "working_with_speed_tweaks"
     }
 
 @app.get("/health")
@@ -138,6 +145,7 @@ async def generate(request: GenerateRequest):
     try:
         start_time = time.time()
         
+        # MESMAS CONFIGURAÇÕES QUE FUNCIONAVAM
         response = model_instance.create_completion(
             request.prompt,
             max_tokens=min(request.max_tokens, 1024),
@@ -164,13 +172,6 @@ async def generate(request: GenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro na geração: {str(e)}")
 
-# Carregar modelo na inicialização
-print("🚀 Iniciando carregamento do modelo...")
-if load_model():
-    print("✅ Modelo carregado com sucesso!")
-else:
-    print("❌ Falha ao carregar modelo")
-
 if __name__ == "__main__":
     port = int(os.environ.get("SERVER_PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port, workers=1)
+    uvicorn.run("llm_server_working:app", host="0.0.0.0", port=port, workers=1)
