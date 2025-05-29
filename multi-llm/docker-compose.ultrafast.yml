@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # ===== MODELOS OTIMIZADOS PARA VELOCIDADE =====
+  
+  # Fast Tier - Llama 8B OTIMIZADO
+  llama-8b-ultrafast:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: llama-8b-ultrafast
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Llama 3.1 8B UltraFast
+      - MODEL_PATH=/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=50          # MÁXIMO para RTX 3060
+      - CONTEXT_SIZE=1024      # REDUZIDO para velocidade
+      - MODEL_SPECIALTIES=general,fast
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+
+  # Specialist - CodeLlama OTIMIZADO  
+  codellama-7b-ultrafast:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: codellama-7b-ultrafast
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=CodeLlama 7B UltraFast
+      - MODEL_PATH=/app/models/llama/codellama-7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=50          # MÁXIMO
+      - CONTEXT_SIZE=1024      # REDUZIDO
+      - MODEL_SPECIALTIES=code,fast
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+
+  # Premium - Solar OTIMIZADO
+  solar-10b-ultrafast:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: solar-10b-ultrafast
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Solar 10.7B UltraFast
+      - MODEL_PATH=/app/models/solar/solar-10.7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=45          # OTIMIZADO para modelo maior
+      - CONTEXT_SIZE=1024      # REDUZIDO
+      - MODEL_SPECIALTIES=premium,reasoning
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+
+  # ===== GATEWAY ULTRA RÁPIDO =====
+  ultra-gateway:
+    build:
+      context: ./gateway-v2
+      dockerfile: Dockerfile
+    image: llm-smart-gateway-v2:latest
+    container_name: ultra-gateway
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - GATEWAY_VERSION=3.0-ultrafast
+      - LOG_LEVEL=WARNING       # MENOS LOGS
+    networks:
+      - llm-network
+    depends_on:
+      - llama-8b-ultrafast
+      - codellama-7b-ultrafast  
+      - solar-10b-ultrafast
+
+  # ===== MONITORING =====
+  monitoring:
+    image: nginx:alpine
+    container_name: llm-monitoring
+    restart: unless-stopped
+    ports:
+      - "8300:80"
+    volumes:
+      - ./monitoring:/usr/share/nginx/html:ro
+    networks:
+      - llm-network
+
+networks:
+  llm-network:
+    driver: bridge

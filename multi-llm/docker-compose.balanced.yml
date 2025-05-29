@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  # ===== MODELOS BALANCEADOS (FUNCIONAIS + RÁPIDOS) =====
+  
+  # Llama 8B - Configuração Balanceada
+  llama-8b-balanced:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: llama-8b-balanced
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Llama 3.1 8B Balanced
+      - MODEL_PATH=/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=35          # SEGURO para RTX 3060
+      - CONTEXT_SIZE=2048      # BALANCEADO
+      - MODEL_SPECIALTIES=general,balanced
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # CodeLlama - Configuração Balanceada
+  codellama-7b-balanced:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: codellama-7b-balanced
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=CodeLlama 7B Balanced
+      - MODEL_PATH=/app/models/llama/codellama-7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=35          # SEGURO
+      - CONTEXT_SIZE=2048      # BALANCEADO
+      - MODEL_SPECIALTIES=code,balanced
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Solar - Configuração Conservadora (modelo maior)
+  solar-10b-balanced:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: solar-10b-balanced
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Solar 10.7B Balanced
+      - MODEL_PATH=/app/models/solar/solar-10.7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=30          # CONSERVADOR para modelo maior
+      - CONTEXT_SIZE=2048      # BALANCEADO
+      - MODEL_SPECIALTIES=premium,balanced
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== GATEWAY BALANCEADO =====
+  balanced-gateway:
+    build:
+      context: ./gateway-v2
+      dockerfile: Dockerfile
+    image: llm-smart-gateway-v2:latest
+    container_name: balanced-gateway
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - GATEWAY_VERSION=2.5-balanced
+      - LOG_LEVEL=INFO
+    networks:
+      - llm-network
+    depends_on:
+      - llama-8b-balanced
+      - codellama-7b-balanced  
+      - solar-10b-balanced
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== MONITORING =====
+  monitoring:
+    image: nginx:alpine
+    container_name: llm-monitoring
+    restart: unless-stopped
+    ports:
+      - "8300:80"
+    volumes:
+      - ./monitoring:/usr/share/nginx/html:ro
+    networks:
+      - llm-network
+
+networks:
+  llm-network:
+    driver: bridge

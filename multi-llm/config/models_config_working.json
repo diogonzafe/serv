@@ -1,0 +1,49 @@
+{
+  "models": {
+    "codellama-7b": {
+      "name": "CodeLlama 7B Specialist",
+      "path": "/app/models/llama/codellama-7b-instruct-q4_k_m.gguf",
+      "port": 8101,
+      "context_size": 4096,
+      "estimated_vram_gb": 4.8,
+      "tier": "specialist",
+      "specialties": ["code", "programming", "debugging", "development"]
+    },
+    "llama-8b-balanced": {
+      "name": "Llama 3.1 8B Balanced",
+      "path": "/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf",
+      "port": 8102,
+      "context_size": 8192,
+      "estimated_vram_gb": 5.5,
+      "tier": "balanced",
+      "specialties": ["general", "complex-tasks", "multilingual"]
+    },
+    "mistral-7b-code": {
+      "name": "Mistral 7B Code",
+      "path": "/app/models/mistral/mistral-7b-instruct-q4_k_m.gguf",
+      "port": 8103,
+      "context_size": 32768,
+      "estimated_vram_gb": 4.5,
+      "tier": "balanced",
+      "specialties": ["code", "programming", "technical"]
+    },
+    "solar-10b-premium": {
+      "name": "Solar 10.7B Premium",
+      "path": "/app/models/solar/solar-10.7b-instruct-q4_k_m.gguf",
+      "port": 8104,
+      "context_size": 4096,
+      "estimated_vram_gb": 7.0,
+      "tier": "premium",
+      "specialties": ["complex-reasoning", "high-quality", "detailed-analysis"]
+    },
+    "llama-2-7b-fast": {
+      "name": "Llama 2 7B Fast",
+      "path": "/app/models/llama/llama-2-7b-chat-q4_k_m.gguf",
+      "port": 8105,
+      "context_size": 4096,
+      "estimated_vram_gb": 4.0,
+      "tier": "fast",
+      "specialties": ["general", "chat", "quick-responses"]
+    }
+  }
+}
