@@ -1,0 +1,292 @@
+version: '3.8'
+
+services:
+  # ===== FAST TIER MODELS =====
+  llama-3b-fast:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: llama-3b-fast
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Llama 3.2 3B Fast
+      - MODEL_PATH=/app/models/llama/llama-3.2-3b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=32
+      - CONTEXT_SIZE=4096
+      - MODEL_SPECIALTIES=general,chat,quick-responses
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  phi-3-mini:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: phi-3-mini
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Phi-3.5 Mini Reasoning
+      - MODEL_PATH=/app/models/phi/phi-3.5-mini-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=32
+      - CONTEXT_SIZE=4096
+      - MODEL_SPECIALTIES=reasoning,analysis,math
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  gemma-2b-ultra:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: gemma-2b-ultra
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Gemma 2B Ultra Fast
+      - MODEL_PATH=/app/models/gemma/gemma-2b-it-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=32
+      - CONTEXT_SIZE=8192
+      - MODEL_SPECIALTIES=instant-responses,simple-tasks
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== BALANCED TIER MODELS =====
+  llama-8b-balanced:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: llama-8b-balanced
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Llama 3.1 8B Balanced
+      - MODEL_PATH=/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=32
+      - CONTEXT_SIZE=8192
+      - MODEL_SPECIALTIES=general,complex-tasks,multilingual
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mistral-7b-code:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: mistral-7b-code
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Mistral 7B Code
+      - MODEL_PATH=/app/models/mistral/mistral-7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=32
+      - CONTEXT_SIZE=32768
+      - MODEL_SPECIALTIES=code,programming,technical
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== SPECIALIST TIER =====
+  codellama-7b:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: codellama-7b
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=CodeLlama 7B Specialist
+      - MODEL_PATH=/app/models/llama/codellama-7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=32
+      - CONTEXT_SIZE=4096
+      - MODEL_SPECIALTIES=code,programming,debugging,development
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== PREMIUM TIER =====
+  solar-10b-premium:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llm-base
+    image: llm-multi-base:latest
+    container_name: solar-10b-premium
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Solar 10.7B Premium
+      - MODEL_PATH=/app/models/solar/solar-10.7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=32
+      - CONTEXT_SIZE=4096
+      - MODEL_SPECIALTIES=complex-reasoning,high-quality,detailed-analysis
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./config:/app/config:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== SMART GATEWAY V2 =====
+  smart-gateway-v2:
+    build:
+      context: ./gateway-v2
+      dockerfile: Dockerfile
+    image: llm-smart-gateway-v2:latest
+    container_name: smart-gateway-v2
+    restart: unless-stopped
+    ports:
+      - "8200:8200"  # Nova porta para não conflitar
+    environment:
+      - GATEWAY_VERSION=2.0
+      - LOG_LEVEL=INFO
+    networks:
+      - llm-network
+    depends_on:
+      - llama-3b-fast
+      - phi-3-mini
+      - gemma-2b-ultra
+      - llama-8b-balanced
+      - mistral-7b-code
+      - codellama-7b
+      - solar-10b-premium
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== MONITORING DASHBOARD =====
+  monitoring:
+    image: nginx:alpine
+    container_name: llm-monitoring
+    restart: unless-stopped
+    ports:
+      - "8300:80"
+    volumes:
+      - ./monitoring:/usr/share/nginx/html:ro
+    networks:
+      - llm-network
+
+networks:
+  llm-network:
+    driver: bridge
+
+volumes:
+  model_cache:

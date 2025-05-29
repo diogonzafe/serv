@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multi-LLM Dashboard</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .models-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .model-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .model-card.available { border-left: 4px solid #4CAF50; }
+        .model-card.unavailable { border-left: 4px solid #f44336; }
+        .status { display: inline-block; padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; }
+        .status.online { background: #4CAF50; }
+        .status.offline { background: #f44336; }
+        .tier { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 11px; font-weight: bold; }
+        .tier.fast { background: #2196F3; color: white; }
+        .tier.balanced { background: #FF9800; color: white; }
+        .tier.specialist { background: #9C27B0; color: white; }
+        .tier.premium { background: #E91E63; color: white; }
+        .specialties { margin-top: 10px; }
+        .specialty { display: inline-block; background: #e0e0e0; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin: 2px; }
+        .test-section { margin: 30px 0; padding: 20px; background: white; border-radius: 8px; }
+        textarea { width: 100%; height: 100px; margin: 10px 0; }
+        button { padding: 10px 20px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .response { margin-top: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Multi-LLM Dashboard</h1>
+            <p>Monitoramento e teste dos modelos LLM em containers</p>
+        </div>
+
+        <div id="models-container">
+            <h2>📊 Status dos Modelos</h2>
+            <div id="models-grid" class="models-grid">
+                <div>Carregando modelos...</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 Teste Rápido</h2>
+            <textarea id="test-prompt" placeholder="Digite sua pergunta ou solicitação aqui...">Explique o que é inteligência artificial em 3 parágrafos.</textarea>
+            <br>
+            <button onclick="testGeneration()">Gerar Resposta</button>
+            <div id="test-response" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadModels() {
+            try {
+                const response = await fetch('http://localhost:8200/models');
+                const data = await response.json();
+                
+                const grid = document.getElementById('models-grid');
+                grid.innerHTML = '';
+                
+                data.models.forEach(model => {
+                    const card = document.createElement('div');
+                    card.className = `model-card ${model.available ? 'available' : 'unavailable'}`;
+                    
+                    card.innerHTML = `
+                        <h3>${model.id}</h3>
+                        <span class="status ${model.available ? 'online' : 'offline'}">
+                            ${model.available ? 'ONLINE' : 'OFFLINE'}
+                        </span>
+                        <span class="tier ${model.tier}">${model.tier.toUpperCase()}</span>
+                        <div class="specialties">
+                            ${model.specialties.map(s => `<span class="specialty">${s}</span>`).join('')}
+                        </div>
+                    `;
+                    
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                document.getElementById('models-grid').innerHTML = 
+                    '<div style="color: red;">Erro ao carregar modelos. Gateway pode estar offline.</div>';
+            }
+        }
+
+        async function testGeneration() {
+            const prompt = document.getElementById('test-prompt').value;
+            const responseDiv = document.getElementById('test-response');
+            
+            if (!prompt.trim()) {
+                alert('Digite uma pergunta primeiro!');
+                return;
+            }
+            
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = '🔄 Gerando resposta...';
+            
+            try {
+                const response = await fetch('http://localhost:8200/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        max_tokens: 200,
+                        temperature: 0.7
+                    })
+                });
+                
+                const data = await response.json();
+                
+                responseDiv.innerHTML = `
+📝 Resposta:
+${data.text}
+
+🤖 Modelo usado: ${data.gateway_info.selected_model} (${data.gateway_info.model_tier})
+⏱️ Tempo: ${data.generation_time}
+                `;
+            } catch (error) {
+                responseDiv.innerHTML = `❌ Erro: ${error.message}`;
+            }
+        }
+
+        // Carregar modelos ao iniciar
+        loadModels();
+        
+        // Atualizar status a cada 30 segundos
+        setInterval(loadModels, 30000);
+    </script>
+</body>
+</html>
