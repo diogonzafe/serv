@@ -9,6 +9,7 @@ import time
 app = FastAPI(title="Multi-LLM Gateway - Working")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+# MODELOS CONFIRMADOS FUNCIONANDO
 MODELS = {
     "llama-8b-balanced": {
         "url": "http://llama-8b-balanced:8000",
@@ -28,7 +29,7 @@ MODELS = {
     "solar-10b-premium": {
         "url": "http://solar-10b-premium:8000",
         "tier": "premium",
-        "specialties": ["complex-reasoning"]
+        "specialties": ["complex-reasoning", "reasoning"]  # Adicionar "reasoning"
     }
 }
 
@@ -38,32 +39,35 @@ class GenerateRequest(BaseModel):
     temperature: Optional[float] = 0.7
     model_preference: Optional[str] = None
     task_type: Optional[str] = None
-    class Config:
-        protected_namespaces = ()
 
 def select_model(prompt: str, task_type: str = None, preference: str = None) -> str:
+    """Seleção simples e direta de modelo"""
     prompt_lower = prompt.lower()
     
+    # Debug
+    print(f"DEBUG: task_type={task_type}, preference={preference}")
+    
+    # Por preferência explícita de modelo
+    if preference in MODELS:
+        return preference
+    
+    # Por tipo de tarefa
     if task_type == "code":
         return "codellama-7b"
     elif task_type == "reasoning":
         return "solar-10b-premium"
     
-    if preference == "premium":
-        return "solar-10b-premium"
-    elif preference == "specialist":
+    # Por palavras-chave no prompt
+    if any(word in prompt_lower for word in ["código", "code", "python", "função", "programa", "javascript", "debug"]):
         return "codellama-7b"
-    elif preference == "balanced":
-        return "llama-8b-balanced"
-    
-    if any(word in prompt_lower for word in ["code", "python", "function", "programa"]):
-        return "codellama-7b"
-    elif any(word in prompt_lower for word in ["analyze", "complex", "reasoning"]):
+    elif any(word in prompt_lower for word in ["analise", "análise", "complexo", "estratégia", "reasoning"]):
         return "solar-10b-premium"
     
+    # Default: modelo balanceado
     return "llama-8b-balanced"
 
 async def check_model(model_id: str, url: str) -> bool:
+    """Verifica se modelo está funcionando"""
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             response = await client.get(f"{url}/health")
@@ -82,8 +86,10 @@ def root():
 
 @app.get("/health")
 async def health():
+    """Health check do gateway"""
     available = []
     
+    # Verificar cada modelo
     for model_id, config in MODELS.items():
         if await check_model(model_id, config["url"]):
             available.append(model_id)
@@ -98,6 +104,7 @@ async def health():
 
 @app.get("/models")
 async def models():
+    """Lista todos os modelos"""
     models_info = []
     
     for model_id, config in MODELS.items():
@@ -114,10 +121,18 @@ async def models():
 
 @app.post("/generate")
 async def generate(request: GenerateRequest):
+    """Geração de texto usando modelo selecionado"""
+    
+    # Selecionar modelo
     selected_model = select_model(request.prompt, request.task_type, request.model_preference)
     model_url = MODELS[selected_model]["url"]
     
+    # Debug
+    print(f"DEBUG: Selected model: {selected_model} for task_type: {request.task_type}")
+    
+    # Verificar se modelo está disponível
     if not await check_model(selected_model, model_url):
+        # Fallback: tentar qualquer modelo disponível
         for model_id, config in MODELS.items():
             if await check_model(model_id, config["url"]):
                 selected_model = model_id
@@ -126,6 +141,7 @@ async def generate(request: GenerateRequest):
         else:
             raise HTTPException(status_code=503, detail="Nenhum modelo disponível")
     
+    # Fazer requisição para o modelo
     try:
         start_time = time.time()
         
@@ -144,10 +160,11 @@ async def generate(request: GenerateRequest):
         if response.status_code == 200:
             result = response.json()
             
+            # Adicionar informações do gateway
             result["gateway_info"] = {
                 "selected_model": selected_model,
                 "model_tier": MODELS[selected_model]["tier"],
-                "selection_reason": "intelligent_routing",
+                "selection_reason": f"task_type={request.task_type}",
                 "total_time": f"{total_time:.2f}s"
             }
             

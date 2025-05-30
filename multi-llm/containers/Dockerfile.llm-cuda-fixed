@@ -1,0 +1,52 @@
+FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_DOCKER_ARCH=all
+ENV LLAMA_CUBLAS=1
+ENV LLAMA_CUDA=1
+ENV CMAKE_CUDA_ARCHITECTURES=75;86
+
+# Instalação robusta
+RUN apt-get update && apt-get install -y \
+    python3.10 python3.10-dev python3-pip \
+    build-essential cmake ninja-build \
+    cuda-cudart-dev-12-1 cuda-compiler-12-1 \
+    cuda-nvcc-12-1 cuda-nvrtc-dev-12-1 \
+    cuda-nvtx-12-1 cuda-cupti-12-1 \
+    libcublas-dev-12-1 \
+    git curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configurar CUDA paths
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# Verificar NVCC
+RUN nvcc --version
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
+# Instalar dependências base
+RUN pip3 install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn==0.23.2 \
+    pydantic==2.4.2 \
+    httpx==0.25.1 \
+    numpy==1.24.3 \
+    psutil
+
+# COMPILAR llama-cpp-python com CUDA - FORÇA BRUTA
+RUN CUDACXX=/usr/local/cuda-12.1/bin/nvcc \
+    CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=75;86" \
+    FORCE_CMAKE=1 \
+    pip3 install llama-cpp-python==0.2.90 --no-cache-dir --force-reinstall --verbose
+
+WORKDIR /app
+COPY containers/llm_server.py /app/
+COPY containers/entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+ENTRYPOINT ["/app/entrypoint.sh"]

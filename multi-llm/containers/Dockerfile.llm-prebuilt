@@ -1,0 +1,17 @@
+FROM ghcr.io/abetlen/llama-cpp-python:latest
+
+# Adicionar nossas dependências
+RUN pip install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn==0.23.2 \
+    pydantic==2.4.2 \
+    httpx==0.25.1 \
+    psutil
+
+WORKDIR /app
+COPY containers/llm_server.py /app/
+COPY containers/entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+ENTRYPOINT ["/app/entrypoint.sh"]

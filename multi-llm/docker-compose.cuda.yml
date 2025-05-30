@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  llama-8b-balanced:
+    image: llm-multi-base-cuda:latest  # IMAGEM COM CUDA
+    container_name: llama-8b-balanced
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Llama 3.1 8B Balanced
+      - MODEL_PATH=/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=25  # AJUSTADO PARA CABER
+      - CONTEXT_SIZE=4096
+      - MODEL_SPECIALTIES=general,complex-tasks,supervisor
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+
+  codellama-7b:
+    image: llm-multi-base-cuda:codellama  # IMAGEM COM CUDA
+    container_name: codellama-7b
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=CodeLlama 7B Specialist
+      - MODEL_PATH=/app/models/llama/codellama-7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=20  # AJUSTADO PARA CABER
+      - CONTEXT_SIZE=4096
+      - MODEL_SPECIALTIES=code,programming,debugging
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+
+  solar-10b-premium:
+    image: llm-multi-base-cuda:solar  # IMAGEM COM CUDA
+    container_name: solar-10b-premium
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Solar 10.7B Premium
+      - MODEL_PATH=/app/models/solar/solar-10.7b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=20  # AJUSTADO PARA CABER
+      - CONTEXT_SIZE=4096
+      - MODEL_SPECIALTIES=complex-reasoning,analysis,strategy
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - llm-network
+
+  smart-gateway-v2:
+    build:
+      context: ./gateway-v2
+      dockerfile: Dockerfile
+    image: llm-smart-gateway-v2:latest
+    container_name: smart-gateway-v2
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - GATEWAY_VERSION=2.1
+      - LOG_LEVEL=INFO
+    networks:
+      - llm-network
+    depends_on:
+      - llama-8b-balanced
+      - codellama-7b
+      - solar-10b-premium
+
+  monitoring:
+    image: nginx:alpine
+    container_name: llm-monitoring
+    restart: unless-stopped
+    ports:
+      - "8300:80"
+    volumes:
+      - ./monitoring:/usr/share/nginx/html:ro
+    networks:
+      - llm-network
+
+networks:
+  llm-network:
+    driver: bridge
