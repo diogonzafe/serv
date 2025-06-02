@@ -1,309 +1,702 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>🚀 Multi-LLM Dashboard</title>
+    <title>🤖 Multi-Agent LLM Platform</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --border: #e5e7eb;
         }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background: rgba(255,255,255,0.95);
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .header { 
-            text-align: center; 
-            margin-bottom: 40px; 
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 20px;
-        }
-        .header h1 {
-            color: #667eea;
+
+        * {
+            box-sizing: border-box;
             margin: 0;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            padding: 0;
         }
-        .status-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.6;
+            overflow-x: hidden;
         }
-        .status-card {
-            background: linear-gradient(135deg, #4CAF50, #45a049);
-            color: white;
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+            animation: rotate 30s linear infinite;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
             padding: 20px;
-            border-radius: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+            padding: 40px 0;
+            position: relative;
         }
-        .status-card.warning { background: linear-gradient(135deg, #ff9800, #f57c00); }
-        .status-card.error { background: linear-gradient(135deg, #f44336, #d32f2f); }
-        .status-card h3 { margin: 0 0 10px 0; font-size: 1.1em; }
-        .status-card .number { font-size: 2.5em; font-weight: bold; margin: 10px 0; }
-        
-        .models-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); 
-            gap: 20px; 
-            margin-bottom: 30px;
+
+        .header h1 {
+            font-size: 3.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            animation: fadeInDown 0.8s ease;
         }
-        .model-card { 
-            background: white; 
-            padding: 25px; 
-            border-radius: 12px; 
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            border-left: 6px solid #ddd;
-            transition: transform 0.2s, box-shadow 0.2s;
+
+        .header p {
+            font-size: 1.2em;
+            color: #94a3b8;
+            animation: fadeInUp 0.8s ease;
         }
-        .model-card:hover {
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Status Cards */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .status-card {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .status-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
         }
-        .model-card.available { border-left-color: #4CAF50; }
-        .model-card.unavailable { border-left-color: #f44336; }
-        
+
+        .status-card h3 {
+            font-size: 0.9em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .status-card .value {
+            font-size: 2.5em;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 5px;
+        }
+
+        .status-card .detail {
+            font-size: 0.9em;
+            color: #64748b;
+        }
+
+        .status-card.success .value { color: var(--success); }
+        .status-card.warning .value { color: var(--warning); }
+        .status-card.danger .value { color: var(--danger); }
+
+        /* Model Cards */
+        .models-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 25px;
+            color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .model-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .model-card.online {
+            border-color: rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .model-card.offline {
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .model-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
         .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .model-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .model-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .model-status.online {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .model-status.offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .model-tier {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .tier-balanced {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .tier-specialist {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+
+        .tier-premium {
+            background: linear-gradient(135deg, #ec4899, #db2777);
+            color: white;
+        }
+
+        .model-specs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .spec-tag {
+            background: rgba(99, 102, 241, 0.1);
+            color: #a5b4fc;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .model-metrics {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-label {
+            font-size: 0.75em;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        /* Test Console */
+        .test-console {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .prompt-area {
+            width: 100%;
+            min-height: 120px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            color: #f1f5f9;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+
+        .prompt-area:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(148, 163, 184, 0.1);
+            color: #e2e8f0;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(148, 163, 184, 0.2);
+        }
+
+        .response-area {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            min-height: 150px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            color: #e2e8f0;
+            display: none;
+            position: relative;
+        }
+
+        .response-area.active {
+            display: block;
+        }
+
+        .response-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
         }
-        .model-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-        }
-        .status { 
-            display: inline-block; 
-            padding: 6px 12px; 
-            border-radius: 20px; 
-            color: white; 
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .status.online { background: #4CAF50; }
-        .status.offline { background: #f44336; }
-        
-        .tier { 
-            display: inline-block; 
-            padding: 4px 10px; 
-            border-radius: 15px; 
-            font-size: 11px; 
-            font-weight: bold; 
-            margin: 5px 5px 5px 0;
-        }
-        .tier.fast { background: #2196F3; color: white; }
-        .tier.balanced { background: #FF9800; color: white; }
-        .tier.specialist { background: #9C27B0; color: white; }
-        .tier.premium { background: #E91E63; color: white; }
-        
-        .specialties { margin: 15px 0; }
-        .specialty { 
-            display: inline-block; 
-            background: #f0f0f0; 
-            padding: 4px 8px; 
-            border-radius: 10px; 
-            font-size: 11px; 
-            margin: 2px; 
-            border: 1px solid #ddd;
-        }
-        
-        .test-section { 
-            margin: 40px 0; 
-            padding: 30px; 
-            background: white; 
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
-        .test-section h2 {
-            color: #667eea;
-            margin-top: 0;
-        }
-        textarea { 
-            width: 100%; 
-            height: 120px; 
-            margin: 15px 0; 
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 14px;
-            resize: vertical;
-        }
-        textarea:focus {
-            border-color: #667eea;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .button-group {
+
+        .response-meta {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin: 15px 0;
+            gap: 20px;
+            font-size: 0.85em;
+            color: #94a3b8;
         }
-        button { 
-            padding: 12px 24px; 
-            background: linear-gradient(135deg, #667eea, #764ba2); 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.2s;
+
+        /* Loading Animation */
+        .loading-dots {
+            display: inline-flex;
+            gap: 4px;
         }
-        button:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+
+        .loading-dots span {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
         }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
-        .btn-code { background: linear-gradient(135deg, #9C27B0, #673AB7); }
-        .btn-premium { background: linear-gradient(135deg, #E91E63, #AD1457); }
-        
-        .response { 
-            margin-top: 20px; 
-            padding: 20px; 
-            background: #f8f9fa; 
-            border-radius: 8px; 
-            white-space: pre-wrap;
-            border-left: 4px solid #667eea;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .response.error {
-            background: #ffeaea;
-            border-left-color: #f44336;
-            color: #d32f2f;
-        }
-        .response.success {
-            background: #e8f5e8;
-            border-left-color: #4CAF50;
-        }
-        
-        .loading {
-            display: inline-block;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
+
+        /* Footer */
         .footer {
             text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #666;
+            padding: 40px 0;
+            color: #64748b;
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .models-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Pulse Animation */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
         }
     </style>
 </head>
 <body>
+    <div class="bg-animation"></div>
+    
     <div class="container">
         <div class="header">
-            <h1>🚀 Multi-LLM Dashboard</h1>
-            <p>Sistema Multi-Agentes com IA Local - Gateway Inteligente</p>
+            <h1>🤖 Multi-Agent LLM Platform</h1>
+            <p>Sistema Inteligente de Agentes Especializados com IA Local</p>
         </div>
 
-        <div id="status-summary" class="status-summary">
+        <div class="status-grid">
             <div class="status-card">
-                <h3>Gateway</h3>
-                <div class="number" id="gateway-status">🔍</div>
-                <div>Verificando...</div>
-            </div>
-            <div class="status-card">
-                <h3>Modelos Online</h3>
-                <div class="number" id="models-online">-</div>
-                <div>de <span id="models-total">-</span></div>
-            </div>
-            <div class="status-card">
-                <h3>Última Atualização</h3>
-                <div class="number">⏰</div>
-                <div id="last-update">-</div>
-            </div>
-        </div>
-
-        <div id="models-container">
-            <h2>📊 Status dos Modelos</h2>
-            <div id="models-grid" class="models-grid">
-                <div style="text-align: center; padding: 40px; color: #666;">
-                    <div class="loading">⚡</div>
-                    <p>Carregando informações dos modelos...</p>
+                <h3>Status do Gateway</h3>
+                <div class="value" id="gateway-status">
+                    <div class="loading-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
                 </div>
+                <div class="detail" id="gateway-detail">Conectando...</div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Agentes Ativos</h3>
+                <div class="value" id="agents-count">-</div>
+                <div class="detail">de <span id="total-agents">4</span> disponíveis</div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Performance Média</h3>
+                <div class="value" id="avg-performance">-</div>
+                <div class="detail">tempo de resposta</div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Requisições Hoje</h3>
+                <div class="value" id="requests-today">0</div>
+                <div class="detail">processadas com sucesso</div>
             </div>
         </div>
 
-        <div class="test-section">
-            <h2>🧪 Central de Testes</h2>
-            <textarea id="test-prompt" placeholder="Digite sua pergunta ou solicitação aqui...">Como funciona a inteligência artificial?</textarea>
-            
-            <div class="button-group">
-                <button onclick="testGeneration()">💬 Teste Geral</button>
-                <button onclick="testGeneration('code')" class="btn-code">💻 Teste Código</button>
-                <button onclick="testGeneration('reasoning')" class="btn-premium">🧠 Análise Complexa</button>
-                <button onclick="clearResponse()">🧹 Limpar</button>
+        <div class="models-section">
+            <h2 class="section-title">
+                <span>🧠</span>
+                <span>Agentes Especializados</span>
+            </h2>
+            <div class="models-grid" id="models-grid">
+                <!-- Models will be loaded here -->
+            </div>
+        </div>
+
+        <div class="test-console">
+            <div class="console-header">
+                <h2 class="section-title">
+                    <span>🚀</span>
+                    <span>Console de Testes</span>
+                </h2>
             </div>
             
-            <div id="test-response" class="response" style="display: none;"></div>
+            <textarea 
+                id="prompt-input" 
+                class="prompt-area" 
+                placeholder="Digite sua pergunta ou comando aqui... (Ctrl+Enter para enviar)"
+            >Explique como funciona o aprendizado de máquina de forma simples.</textarea>
+            
+            <div class="controls">
+                <button class="btn btn-primary" onclick="sendPrompt()">
+                    <span>⚡</span>
+                    <span>Enviar (Auto-seleção)</span>
+                </button>
+                <button class="btn btn-secondary" onclick="sendPrompt('code')">
+                    <span>💻</span>
+                    <span>Modo Código</span>
+                </button>
+                <button class="btn btn-secondary" onclick="sendPrompt('reasoning')">
+                    <span>🧮</span>
+                    <span>Análise Complexa</span>
+                </button>
+                <button class="btn btn-secondary" onclick="sendPrompt('general')">
+                    <span>💬</span>
+                    <span>Conversa Geral</span>
+                </button>
+                <button class="btn btn-secondary" onclick="clearConsole()">
+                    <span>🗑️</span>
+                    <span>Limpar</span>
+                </button>
+            </div>
+            
+            <div id="response-area" class="response-area">
+                <div class="response-header">
+                    <h3>Resposta do Agente</h3>
+                    <div class="response-meta">
+                        <span id="response-model">-</span>
+                        <span id="response-time">-</span>
+                        <span id="response-tokens">-</span>
+                    </div>
+                </div>
+                <div id="response-content"></div>
+            </div>
         </div>
 
         <div class="footer">
-            <p>Multi-LLM Dashboard v2.0 | Sistema funcionando com 4 modelos especializados</p>
-            <p>🔗 Gateway: <span id="gateway-url">http://192.168.15.31:8200</span></p>
+            <p>Multi-Agent LLM Platform v3.0 | Powered by LangChain & Local AI</p>
+            <p>Gateway: <span id="gateway-url">http://192.168.15.31:8200</span> | Dashboard: <span>http://192.168.15.31:8300</span></p>
         </div>
     </div>
 
     <script>
         const GATEWAY_URL = 'http://192.168.15.31:8200';
-        
-        // Função para atualizar status
-        async function updateStatus() {
+        let requestCount = 0;
+        let performanceData = [];
+
+        // Model configurations with better descriptions
+        const modelDescriptions = {
+            'llama-8b-balanced': {
+                name: 'Llama 3.1 8B',
+                description: 'Agente Generalista Balanceado',
+                icon: '🦙',
+                capabilities: ['Conversação', 'Análise', 'Multitarefa'],
+                performance: 'Equilibrado'
+            },
+            'codellama-7b': {
+                name: 'CodeLlama 7B',
+                description: 'Especialista em Programação',
+                icon: '💻',
+                capabilities: ['Código', 'Debug', 'Arquitetura'],
+                performance: 'Otimizado'
+            },
+            'solar-10b-premium': {
+                name: 'Solar 10.7B',
+                description: 'Agente Premium de Alta Performance',
+                icon: '⭐',
+                capabilities: ['Raciocínio Complexo', 'Análise Profunda', 'Estratégia'],
+                performance: 'Premium'
+            },
+            'mistral-7b-code': {
+                name: 'Mistral 7B',
+                description: 'Agente Técnico Versátil',
+                icon: '🔧',
+                capabilities: ['Código', 'Documentação', 'Análise Técnica'],
+                performance: 'Rápido'
+            }
+        };
+
+        // Initialize
+        async function init() {
+            await updateSystemStatus();
+            await loadModels();
+            setupKeyboardShortcuts();
+            
+            // Update every 30 seconds
+            setInterval(updateSystemStatus, 30000);
+            setInterval(loadModels, 60000);
+        }
+
+        // Update system status
+        async function updateSystemStatus() {
             try {
                 const response = await fetch(`${GATEWAY_URL}/health`);
                 const data = await response.json();
                 
-                document.getElementById('gateway-status').textContent = data.status === 'healthy' ? '✅' : '❌';
-                document.getElementById('models-online').textContent = data.available_models;
-                document.getElementById('models-total').textContent = data.total_models;
-                document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+                // Update gateway status
+                const statusEl = document.getElementById('gateway-status');
+                const detailEl = document.getElementById('gateway-detail');
                 
-                // Atualizar classes dos cards de status
-                const cards = document.querySelectorAll('.status-card');
                 if (data.status === 'healthy') {
-                    cards[0].className = 'status-card';
-                    cards[1].className = 'status-card';
+                    statusEl.innerHTML = '✅ Online';
+                    statusEl.parentElement.classList.add('success');
+                    detailEl.textContent = 'Gateway operacional';
                 } else {
-                    cards[0].className = 'status-card error';
-                    cards[1].className = 'status-card warning';
+                    statusEl.innerHTML = '⚠️ Degradado';
+                    statusEl.parentElement.classList.add('warning');
+                    detailEl.textContent = 'Capacidade reduzida';
                 }
                 
+                // Update agent count
+                document.getElementById('agents-count').textContent = data.available_models || 0;
+                document.getElementById('total-agents').textContent = data.total_models || 4;
+                
+                // Update performance
+                updatePerformanceMetric();
+                
             } catch (error) {
-                document.getElementById('gateway-status').textContent = '❌';
-                document.getElementById('models-online').textContent = '0';
-                document.querySelector('.status-card').className = 'status-card error';
-                console.error('Erro ao verificar status:', error);
+                document.getElementById('gateway-status').innerHTML = '❌ Offline';
+                document.getElementById('gateway-detail').textContent = 'Gateway indisponível';
+                document.getElementById('gateway-status').parentElement.classList.add('danger');
+                console.error('Error updating status:', error);
             }
         }
 
-        // Função para carregar modelos
+        // Load models
         async function loadModels() {
             try {
                 const response = await fetch(`${GATEWAY_URL}/models`);
@@ -313,114 +706,166 @@
                 grid.innerHTML = '';
                 
                 data.models.forEach(model => {
-                    const card = document.createElement('div');
-                    card.className = `model-card ${model.available ? 'available' : 'unavailable'}`;
-                    
-                    card.innerHTML = `
-                        <div class="model-header">
-                            <div class="model-title">${model.id}</div>
-                            <span class="status ${model.available ? 'online' : 'offline'}">
-                                ${model.available ? '🟢 ONLINE' : '🔴 OFFLINE'}
-                            </span>
-                        </div>
-                        <span class="tier ${model.tier}">${model.tier.toUpperCase()}</span>
-                        <div class="specialties">
-                            <strong>Especialidades:</strong><br>
-                            ${model.specialties.map(s => `<span class="specialty">${s}</span>`).join('')}
-                        </div>
-                        ${model.available ? 
-                            '<div style="color: #4CAF50; font-size: 12px;">✅ Pronto para uso</div>' : 
-                            '<div style="color: #f44336; font-size: 12px;">❌ Indisponível</div>'
-                        }
-                    `;
-                    
+                    const desc = modelDescriptions[model.id] || {};
+                    const card = createModelCard(model, desc);
                     grid.appendChild(card);
                 });
+                
             } catch (error) {
+                console.error('Error loading models:', error);
                 document.getElementById('models-grid').innerHTML = 
-                    '<div style="color: red; text-align: center; padding: 40px;">❌ Erro ao carregar modelos. Verifique se o gateway está funcionando.</div>';
-                console.error('Erro ao carregar modelos:', error);
+                    '<div style="text-align: center; padding: 40px; color: #ef4444;">❌ Erro ao carregar modelos</div>';
             }
         }
 
-        // Função para testar geração
-        async function testGeneration(taskType = null) {
-            const prompt = document.getElementById('test-prompt').value.trim();
-            const responseDiv = document.getElementById('test-response');
+        // Create model card
+        function createModelCard(model, desc) {
+            const card = document.createElement('div');
+            card.className = `model-card ${model.available ? 'online' : 'offline'}`;
             
+            card.innerHTML = `
+                <div class="model-header">
+                    <div>
+                        <div class="model-name">
+                            <span style="font-size: 1.5em; margin-right: 10px;">${desc.icon || '🤖'}</span>
+                            ${desc.name || model.id}
+                        </div>
+                        <div style="color: #94a3b8; font-size: 0.9em; margin-top: 5px;">
+                            ${desc.description || 'Agente Especializado'}
+                        </div>
+                    </div>
+                    <div class="model-status ${model.available ? 'online' : 'offline'}">
+                        ${model.available ? '● Online' : '● Offline'}
+                    </div>
+                </div>
+                
+                <div class="model-tier tier-${model.tier}">
+                    ${model.tier.toUpperCase()}
+                </div>
+                
+                <div class="model-specs">
+                    ${(desc.capabilities || model.specialties).map(spec => 
+                        `<span class="spec-tag">${spec}</span>`
+                    ).join('')}
+                </div>
+                
+                <div class="model-metrics">
+                    <div class="metric">
+                        <span class="metric-label">Performance</span>
+                        <span class="metric-value">${desc.performance || 'Standard'}</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Status</span>
+                        <span class="metric-value" style="color: ${model.available ? '#10b981' : '#ef4444'}">
+                            ${model.available ? 'Pronto' : 'Indisponível'}
+                        </span>
+                    </div>
+                </div>
+            `;
+            
+            if (model.available) {
+                card.classList.add('pulse');
+            }
+            
+            return card;
+        }
+
+        // Send prompt
+        async function sendPrompt(taskType = null) {
+            const prompt = document.getElementById('prompt-input').value.trim();
             if (!prompt) {
-                alert('Digite uma pergunta primeiro!');
+                alert('Por favor, digite uma pergunta ou comando.');
                 return;
             }
             
-            responseDiv.style.display = 'block';
-            responseDiv.className = 'response';
-            responseDiv.innerHTML = '<div class="loading">⚡</div> Gerando resposta...';
+            const responseArea = document.getElementById('response-area');
+            const responseContent = document.getElementById('response-content');
             
-            const requestData = {
-                prompt: prompt,
-                max_tokens: 200,
-                temperature: 0.7
-            };
+            responseArea.classList.add('active');
+            responseContent.innerHTML = `
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <span style="margin-left: 10px;">Processando sua solicitação...</span>
+            `;
             
-            if (taskType) {
-                requestData.task_type = taskType;
-            }
+            const startTime = Date.now();
             
             try {
-                const startTime = Date.now();
                 const response = await fetch(`${GATEWAY_URL}/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestData)
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        max_tokens: 500,
+                        temperature: 0.7,
+                        task_type: taskType
+                    })
                 });
                 
                 const data = await response.json();
                 const endTime = Date.now();
-                const totalTime = endTime - startTime;
+                const totalTime = (endTime - startTime) / 1000;
                 
                 if (response.ok) {
-                    responseDiv.className = 'response success';
-                    responseDiv.innerHTML = `
-🤖 <strong>Modelo:</strong> ${data.gateway_info.selected_model} (${data.gateway_info.model_tier})
-⏱️ <strong>Tempo Total:</strong> ${totalTime}ms | <strong>Geração:</strong> ${data.generation_time}
-📊 <strong>Tokens:</strong> ${data.usage?.total_tokens || 'N/A'}
-
-📝 <strong>Resposta:</strong>
-${data.text}
-                    `;
+                    // Update metrics
+                    requestCount++;
+                    performanceData.push(totalTime);
+                    document.getElementById('requests-today').textContent = requestCount;
+                    updatePerformanceMetric();
+                    
+                    // Display response
+                    const modelInfo = modelDescriptions[data.gateway_info.selected_model] || {};
+                    
+                    document.getElementById('response-model').innerHTML = 
+                        `${modelInfo.icon || '🤖'} ${modelInfo.name || data.gateway_info.selected_model}`;
+                    document.getElementById('response-time').textContent = 
+                        `⏱️ ${totalTime.toFixed(2)}s`;
+                    document.getElementById('response-tokens').textContent = 
+                        `📊 ${data.usage?.total_tokens || 'N/A'} tokens`;
+                    
+                    responseContent.innerHTML = data.text;
+                    
                 } else {
                     throw new Error(data.detail || 'Erro desconhecido');
                 }
+                
             } catch (error) {
-                responseDiv.className = 'response error';
-                responseDiv.innerHTML = `❌ <strong>Erro:</strong> ${error.message}`;
+                responseContent.innerHTML = `
+                    <div style="color: #ef4444;">
+                        ❌ Erro: ${error.message}
+                    </div>
+                `;
             }
         }
 
-        // Função para limpar resposta
-        function clearResponse() {
-            document.getElementById('test-response').style.display = 'none';
+        // Update performance metric
+        function updatePerformanceMetric() {
+            if (performanceData.length > 0) {
+                const avg = performanceData.reduce((a, b) => a + b, 0) / performanceData.length;
+                document.getElementById('avg-performance').textContent = `${avg.toFixed(2)}s`;
+            }
         }
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', function() {
-            updateStatus();
-            loadModels();
-            
-            // Atualizar status a cada 30 segundos
-            setInterval(updateStatus, 30000);
-            
-            // Atualizar modelos a cada 60 segundos
-            setInterval(loadModels, 60000);
-        });
+        // Clear console
+        function clearConsole() {
+            document.getElementById('prompt-input').value = '';
+            document.getElementById('response-area').classList.remove('active');
+        }
 
-        // Permitir Enter no textarea para enviar
-        document.getElementById('test-prompt').addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 'Enter') {
-                testGeneration();
-            }
-        });
+        // Keyboard shortcuts
+        function setupKeyboardShortcuts() {
+            document.getElementById('prompt-input').addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    sendPrompt();
+                }
+            });
+        }
+
+        // Start the application
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
