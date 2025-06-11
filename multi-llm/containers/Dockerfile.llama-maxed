@@ -1,0 +1,50 @@
+FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV CUDA_DOCKER_ARCH=all
+ENV LLAMA_CUBLAS=1
+ENV LLAMA_CUDA=1
+ENV CMAKE_CUDA_ARCHITECTURES=86
+ENV CUDA_VISIBLE_DEVICES=0
+ENV NVIDIA_VISIBLE_DEVICES=0
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Instalação otimizada
+RUN apt-get update && apt-get install -y \
+    python3.10 python3.10-dev python3-pip \
+    build-essential cmake ninja-build \
+    git curl wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# CUDA paths
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+RUN python3 -m pip install --upgrade pip
+
+# Dependências Python com torch para GPU
+RUN pip3 install --no-cache-dir \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+RUN pip3 install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn==0.23.2 \
+    pydantic==2.4.2 \
+    httpx==0.25.1 \
+    numpy==1.24.3 \
+    psutil \
+    asyncio
+
+# Compilar llama-cpp-python com CUDA - máxima otimização
+RUN CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=86 -DGGML_CUDA_F16=on -DGGML_CUDA_DMMV_X=64 -DGGML_CUDA_MMV_Y=2" \
+    FORCE_CMAKE=1 \
+    pip3 install llama-cpp-python==0.2.90 --no-cache-dir --force-reinstall --no-binary llama-cpp-python --verbose
+
+WORKDIR /app
+COPY containers/llm_server_maxed.py /app/
+COPY containers/entrypoint.sh /app/
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+CMD ["python3", "/app/llm_server_maxed.py"]

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  llama-8b-optimized:
+    image: llm-multi-base-cuda:latest
+    container_name: llama-8b-optimized
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Llama 3.1 8B MAXIMIZED
+      - MODEL_PATH=/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=50
+      - CONTEXT_SIZE=8192
+      - MODEL_SPECIALTIES=general,complex-tasks,supervisor
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./containers/llm_server_optimized.py:/app/llm_server.py:ro
+    # CORREÇÃO: Usar runtime ao invés de gpus
+    runtime: nvidia
+    networks:
+      - llm-network
+    ports:
+      - "8101:8000"
+
+  smart-gateway-v2:
+    image: llm-smart-gateway-v2:latest
+    container_name: smart-gateway-v2
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - GATEWAY_VERSION=2.1
+      - LOG_LEVEL=INFO
+    networks:
+      - llm-network
+    depends_on:
+      - llama-8b-optimized
+
+networks:
+  llm-network:
+    driver: bridge

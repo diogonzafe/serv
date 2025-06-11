@@ -1,0 +1,9 @@
+FROM llm-multi-base-cuda:latest
+
+# Atualizar llama-cpp-python para versão mais recente que suporta Granite
+RUN pip uninstall -y llama-cpp-python && \
+    CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=75;86" \
+    FORCE_CMAKE=1 \
+    pip install llama-cpp-python --no-cache-dir --force-reinstall --no-binary llama-cpp-python --verbose
+
+WORKDIR /app

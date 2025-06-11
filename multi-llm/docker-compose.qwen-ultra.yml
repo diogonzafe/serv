@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  qwen-7b-ultra:
+    image: llm-multi-base-cuda:latest
+    container_name: qwen-7b-ultra
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Qwen 2.5 7B ULTRA
+      - MODEL_PATH=/app/models/qwen/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=60  # MÁXIMO para RTX 3060
+      - CONTEXT_SIZE=8192  # Balanceado para performance
+      - MODEL_SPECIALTIES=general,complex-tasks,multilingual,reasoning,ultra-fast
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+      - CUDA_LAUNCH_BLOCKING=0
+      - OMP_NUM_THREADS=16
+    volumes:
+      - ./models:/app/models:ro
+      - ./containers/llm_server_ultra_optimized.py:/app/llm_server.py:ro
+    runtime: nvidia
+    networks:
+      - llm-network
+    ports:
+      - "8101:8000"
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+  smart-gateway-v2:
+    image: llm-smart-gateway-v2:latest
+    container_name: smart-gateway-v2
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - GATEWAY_VERSION=2.1-ultra
+      - LOG_LEVEL=WARNING  # Menos logs = mais performance
+    networks:
+      - llm-network
+    depends_on:
+      - qwen-7b-ultra
+networks:
+  llm-network:
+    driver: bridge

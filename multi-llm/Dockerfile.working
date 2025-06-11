@@ -1,0 +1,20 @@
+FROM ghcr.io/abetlen/llama-cpp-python:latest
+
+# Adicionar nossas dependências com versões compatíveis
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    pydantic \
+    httpx \
+    psutil \
+    gputil
+
+WORKDIR /app
+
+# Criar um entrypoint simples
+RUN echo '#!/bin/bash' > /app/entrypoint.sh && \
+    echo 'exec python3 /app/llm_server.py "$@"' >> /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+ENTRYPOINT ["/app/entrypoint.sh"]

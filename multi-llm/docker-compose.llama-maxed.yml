@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  llama-8b-maxed:
+    build:
+      context: .
+      dockerfile: containers/Dockerfile.llama-maxed
+    image: llama-8b-maximized:latest
+    container_name: llama-8b-maxed
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Llama 3.1 8B MAXIMIZED
+      - MODEL_PATH=/app/models/llama/llama-3.1-8b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=45              # MÁXIMO
+      - CONTEXT_SIZE=8192          # CONTEXTO GRANDE
+      - CUDA_VISIBLE_DEVICES=0
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OMP_NUM_THREADS=16
+      - CUDA_LAUNCH_BLOCKING=0     # Performance máxima
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+    volumes:
+      - ./models:/app/models:ro
+    ports:
+      - "8101:8000"  # Porta direta do modelo
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Para docker-compose local
+    runtime: nvidia
+    networks:
+      - llm-network
+
+  # Gateway simplificado apontando apenas para Llama
+  gateway-simple:
+    build:
+      context: ./gateway-simple
+      dockerfile: Dockerfile
+    container_name: gateway-simple
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - LLAMA_URL=http://llama-8b-maxed:8000
+    networks:
+      - llm-network
+    depends_on:
+      - llama-8b-maxed
+
+networks:
+  llm-network:
+    driver: bridge

@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+  granite-8b-optimized:
+    image: llm-multi-base-cuda:latest
+    container_name: granite-8b-optimized
+    restart: unless-stopped
+    environment:
+      - MODEL_NAME=Granite 3.3 8B Instruct
+      - MODEL_PATH=/app/models/granite/granite-3.3-8b-instruct-q4_k_m.gguf
+      - SERVER_PORT=8000
+      - GPU_LAYERS=0  # Começar com 0 para teste
+      - CONTEXT_SIZE=2048  # Reduzir para teste
+      - MODEL_SPECIALTIES=general,complex-tasks,supervisor
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./models:/app/models:ro
+      - ./containers/llm_server_granite.py:/app/llm_server.py:ro  # Usar versão granite
+    runtime: nvidia
+    networks:
+      - llm-network
+    ports:
+      - "8101:8000"
+  smart-gateway-v2:
+    image: llm-smart-gateway-v2:latest
+    container_name: smart-gateway-v2
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+    environment:
+      - GATEWAY_VERSION=2.1
+      - LOG_LEVEL=INFO
+    networks:
+      - llm-network
+    depends_on:
+      - granite-8b-optimized
+networks:
+  llm-network:
+    driver: bridge

@@ -1,0 +1,38 @@
+FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Instalar Python e dependências básicas
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Atualizar pip
+RUN python3 -m pip install --upgrade pip
+
+# Instalar dependências Python
+RUN pip3 install --no-cache-dir \
+    fastapi==0.104.1 \
+    uvicorn==0.23.2 \
+    pydantic==2.4.2 \
+    httpx==0.25.1 \
+    numpy==1.24.3 \
+    psutil \
+    gputil
+
+# Instalar llama-cpp-python com suporte CUDA
+ENV CMAKE_ARGS="-DLLAMA_CUBLAS=on"
+ENV FORCE_CMAKE=1
+RUN pip3 install llama-cpp-python==0.2.90 --no-cache-dir
+
+WORKDIR /app
+
+# Criar entrypoint simples
+RUN echo '#!/bin/bash\npython3 /app/llm_server.py' > /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+CMD ["/app/entrypoint.sh"]
